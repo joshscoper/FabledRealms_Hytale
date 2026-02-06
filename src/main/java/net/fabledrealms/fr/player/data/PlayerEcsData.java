@@ -13,6 +13,7 @@ import java.util.UUID;
 public class PlayerEcsData {
 
     private UUID playerId;
+    private String lastKnownName = "Unknown";
     private Instant createdAt = Instant.now();
     private Instant updatedAt = Instant.now();
 
@@ -42,6 +43,14 @@ public class PlayerEcsData {
 
     public void setPlayerId(UUID playerId) {
         this.playerId = playerId;
+    }
+
+    public String getLastKnownName() {
+        return lastKnownName;
+    }
+
+    public void setLastKnownName(String lastKnownName) {
+        this.lastKnownName = lastKnownName;
     }
 
     public Instant getCreatedAt() {

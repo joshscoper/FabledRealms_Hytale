@@ -30,8 +30,9 @@ public final class FabledPlayerManager {
 
     public FabledPlayer loadPlayer(Player player) {
         PlayerEcsData data = playerJsonStore.loadOrCreate(player.getUuid());
-        FabledPlayer fabledPlayer = new FabledPlayer(player, data);
+        data.setLastKnownName(player.getDisplayName());
 
+        FabledPlayer fabledPlayer = new FabledPlayer(player, data);
         onlinePlayers.put(player.getUuid(), fabledPlayer);
 
         plugin.getLogger().atInfo().log(
@@ -68,5 +69,25 @@ public final class FabledPlayerManager {
 
     public Optional<FabledPlayer> getPlayer(UUID playerId) {
         return Optional.ofNullable(onlinePlayers.get(playerId));
+    }
+
+    public Optional<PlayerEcsData> getPlayerData(UUID playerId) {
+        FabledPlayer online = onlinePlayers.get(playerId);
+        if (online != null) {
+            return Optional.of(online.getEcsData());
+        }
+        return Optional.of(playerJsonStore.loadOrCreate(playerId));
+    }
+
+    public Optional<PlayerEcsData> getPlayerDataByName(String playerName) {
+        Optional<FabledPlayer> online = onlinePlayers.values().stream()
+                .filter(fp -> fp.getEcsData().getLastKnownName().equalsIgnoreCase(playerName))
+                .findFirst();
+
+        if (online.isPresent()) {
+            return Optional.of(online.get().getEcsData());
+        }
+
+        return playerJsonStore.findByName(playerName);
     }
 }

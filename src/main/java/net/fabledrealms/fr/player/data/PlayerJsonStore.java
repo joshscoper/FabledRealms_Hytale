@@ -8,6 +8,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -40,6 +43,9 @@ public final class PlayerJsonStore {
             if (data.getPlayerId() == null) {
                 data.setPlayerId(playerId);
             }
+            if (data.getLastKnownName() == null || data.getLastKnownName().isBlank()) {
+                data.setLastKnownName("Unknown");
+            }
             return data;
         } catch (IOException e) {
             throw new IllegalStateException("Failed to read player JSON: " + file.getAbsolutePath(), e);
@@ -60,6 +66,38 @@ public final class PlayerJsonStore {
         } catch (IOException e) {
             throw new IllegalStateException("Failed to write player JSON: " + file.getAbsolutePath(), e);
         }
+    }
+
+    public Optional<PlayerEcsData> findByName(String playerName) {
+        return loadAll().stream()
+                .filter(data -> data.getLastKnownName() != null)
+                .filter(data -> data.getLastKnownName().equalsIgnoreCase(playerName))
+                .findFirst();
+    }
+
+    public List<PlayerEcsData> loadAll() {
+        List<PlayerEcsData> results = new ArrayList<>();
+        if (!playerDataDir.exists() || !playerDataDir.isDirectory()) {
+            return results;
+        }
+
+        File[] files = playerDataDir.listFiles((dir, name) -> name.endsWith(".json"));
+        if (files == null) {
+            return results;
+        }
+
+        for (File file : files) {
+            try {
+                PlayerEcsData data = mapper.readValue(file, PlayerEcsData.class);
+                if (data.getPlayerId() != null) {
+                    results.add(data);
+                }
+            } catch (IOException ignored) {
+                // skip malformed files but keep the admin command functional for valid entries
+            }
+        }
+
+        return results;
     }
 
     private File resolveFile(UUID playerId) {
