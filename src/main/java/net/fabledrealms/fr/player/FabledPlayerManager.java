@@ -1,6 +1,7 @@
 package net.fabledrealms.fr.player;
 
 import com.hypixel.hytale.server.core.entity.entities.Player;
+import com.hypixel.hytale.server.core.universe.PlayerRef;
 import net.fabledrealms.fr.FabledRealmsPlugin;
 import net.fabledrealms.fr.player.data.PlayerEcsData;
 import net.fabledrealms.fr.player.data.PlayerJsonStore;
@@ -29,16 +30,20 @@ public final class FabledPlayerManager {
     }
 
     public FabledPlayer loadPlayer(Player player) {
-        PlayerEcsData data = playerJsonStore.loadOrCreate(player.getUid());
-        data.setLastKnownName(player.getDisplayName());
+        return loadPlayer(player.getUid(), player.getPlayerRef(), player.getDisplayName());
+    }
 
-        FabledPlayer fabledPlayer = new FabledPlayer(player, data);
-        onlinePlayers.put(player.getUid(), fabledPlayer);
+    public FabledPlayer loadPlayer(UUID playerId, PlayerRef playerRef, String displayName) {
+        PlayerEcsData data = playerJsonStore.loadOrCreate(playerId);
+        data.setLastKnownName(displayName);
+
+        FabledPlayer fabledPlayer = new FabledPlayer(playerId, playerRef, data);
+        onlinePlayers.put(playerId, fabledPlayer);
 
         plugin.getLogger().atInfo().log(
                 "Loaded player %s (%s) with %s character(s).",
-                player.getDisplayName(),
-                player.getUid(),
+                displayName,
+                playerId,
                 data.getCharacters().size()
         );
 

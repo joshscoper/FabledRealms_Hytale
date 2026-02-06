@@ -4,41 +4,48 @@ import com.hypixel.hytale.server.core.entity.entities.Player;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import net.fabledrealms.fr.player.data.PlayerEcsData;
 
+import javax.annotation.Nullable;
 import java.util.UUID;
 
 /**
  * Runtime wrapper for online players.
- *
- * <p>Holds references to Hytale runtime player objects plus the persistent
- * ECS-style data graph that we serialize to JSON.</p>
  */
 public final class FabledPlayer {
 
-    private final Player player;
-    private final PlayerRef playerRef;
     private final UUID playerId;
+    private final PlayerRef playerRef;
     private final PlayerEcsData ecsData;
+    private final Player player;
 
     public FabledPlayer(Player player, PlayerEcsData ecsData) {
-        this.player = player;
-        this.playerRef = player.getPlayerRef();
-        this.playerId = player.getUid();
+        this(player.getUid(), player.getPlayerRef(), ecsData, player);
+    }
+
+    public FabledPlayer(UUID playerId, PlayerRef playerRef, PlayerEcsData ecsData) {
+        this(playerId, playerRef, ecsData, null);
+    }
+
+    private FabledPlayer(UUID playerId, PlayerRef playerRef, PlayerEcsData ecsData, @Nullable Player player) {
+        this.playerId = playerId;
+        this.playerRef = playerRef;
         this.ecsData = ecsData;
-    }
-
-    public Player getPlayer() {
-        return player;
-    }
-
-    public PlayerRef getPlayerRef() {
-        return playerRef;
+        this.player = player;
     }
 
     public UUID getPlayerId() {
         return playerId;
     }
 
+    public PlayerRef getPlayerRef() {
+        return playerRef;
+    }
+
     public PlayerEcsData getEcsData() {
         return ecsData;
+    }
+
+    @Nullable
+    public Player getPlayer() {
+        return player;
     }
 }
