@@ -81,7 +81,7 @@ public final class FabledPlayerManager {
         if (online != null) {
             return Optional.of(online.getEcsData());
         }
-        return Optional.of(playerJsonStore.loadOrCreate(playerId));
+        return playerJsonStore.load(playerId);
     }
 
     public Optional<PlayerEcsData> getPlayerDataByName(String playerName) {

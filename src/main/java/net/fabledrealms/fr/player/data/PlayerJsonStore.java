@@ -30,12 +30,17 @@ public final class PlayerJsonStore {
     }
 
     public PlayerEcsData loadOrCreate(UUID playerId) {
-        File file = resolveFile(playerId);
-
-        if (!file.exists()) {
+        return load(playerId).orElseGet(() -> {
             PlayerEcsData created = PlayerEcsData.createDefault(playerId);
             save(created);
             return created;
+        });
+    }
+
+    public Optional<PlayerEcsData> load(UUID playerId) {
+        File file = resolveFile(playerId);
+        if (!file.exists()) {
+            return Optional.empty();
         }
 
         try {
@@ -46,7 +51,7 @@ public final class PlayerJsonStore {
             if (data.getLastKnownName() == null || data.getLastKnownName().isBlank()) {
                 data.setLastKnownName("Unknown");
             }
-            return data;
+            return Optional.of(data);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to read player JSON: " + file.getAbsolutePath(), e);
         }
