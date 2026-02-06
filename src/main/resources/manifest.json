@@ -1,0 +1,17 @@
+{
+  "Group": "net.fabledrealms.fr",
+  "Name": "FabledRealms",
+  "Version": "1.0.0",
+  "Description": "The FabledRealms plugin",
+  "Authors": [
+    {
+      "Name": "j0sh"
+    }
+  ],
+  "ServerVersion": "*",
+  "Dependencies": {},
+  "OptionalDependencies": {},
+  "DisabledByDefault": false,
+  "IncludesAssetPack": true,
+  "Main": "net.fabledrealms.fr.FabledRealmsPlugin"
+}
