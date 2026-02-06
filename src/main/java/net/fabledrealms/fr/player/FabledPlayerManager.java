@@ -20,25 +20,25 @@ public final class FabledPlayerManager {
     public FabledPlayerManager(FabledRealmsPlugin plugin) {
         this.plugin = plugin;
 
-        File playerDataDir = new File(
-                plugin.getDataDirectory(),
-                "FabledRealms" + File.separator + "player_data"
-        );
+        File playerDataDir = plugin.getDataDirectory()
+                .resolve("FabledRealms")
+                .resolve("player_data")
+                .toFile();
 
         this.playerJsonStore = new PlayerJsonStore(playerDataDir);
     }
 
     public FabledPlayer loadPlayer(Player player) {
-        PlayerEcsData data = playerJsonStore.loadOrCreate(player.getUuid());
+        PlayerEcsData data = playerJsonStore.loadOrCreate(player.getUid());
         data.setLastKnownName(player.getDisplayName());
 
         FabledPlayer fabledPlayer = new FabledPlayer(player, data);
-        onlinePlayers.put(player.getUuid(), fabledPlayer);
+        onlinePlayers.put(player.getUid(), fabledPlayer);
 
         plugin.getLogger().atInfo().log(
                 "Loaded player %s (%s) with %s character(s).",
                 player.getDisplayName(),
-                player.getUuid(),
+                player.getUid(),
                 data.getCharacters().size()
         );
 

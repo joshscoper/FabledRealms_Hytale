@@ -136,7 +136,7 @@ public final class FabledRealmsPlugin extends JavaPlugin {
     }
 
     public void onPlayerQuit(Player player) {
-        UUID playerId = player.getUuid();
+        UUID playerId = player.getUid();
         playerManager.unloadPlayer(playerId);
     }
 

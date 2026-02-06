@@ -22,7 +22,7 @@ public final class FabledPlayer {
     public FabledPlayer(Player player, PlayerEcsData ecsData) {
         this.player = player;
         this.playerRef = player.getPlayerRef();
-        this.playerId = player.getUuid();
+        this.playerId = player.getUid();
         this.ecsData = ecsData;
     }
 
