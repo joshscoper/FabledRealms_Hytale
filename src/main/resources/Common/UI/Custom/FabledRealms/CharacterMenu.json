@@ -1,0 +1,6 @@
+{
+  "id": "Common/UI/Custom/FabledRealms/CharacterMenu",
+  "type": "panel",
+  "title": "FabledRealms Characters",
+  "description": "Character selection UI surface for MMORPG flow. Data is provided by plugin payload type fabledrealms.character.menu."
+}
