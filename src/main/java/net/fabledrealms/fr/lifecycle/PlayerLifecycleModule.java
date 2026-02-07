@@ -7,6 +7,9 @@ import com.hypixel.hytale.server.core.event.events.player.PlayerConnectEvent;
 import com.hypixel.hytale.server.core.event.events.player.PlayerDisconnectEvent;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import net.fabledrealms.fr.player.FabledPlayerManager;
+import net.fabledrealms.fr.session.PlayerSession;
+import net.fabledrealms.fr.session.SessionStore;
+import net.fabledrealms.fr.ui.JoinCharacterMenuPrompt;
 
 import java.lang.reflect.Method;
 import java.util.UUID;
@@ -18,13 +21,20 @@ public final class PlayerLifecycleModule implements AutoCloseable {
 
     private final HytaleLogger logger;
     private final FabledPlayerManager playerManager;
+    private final SessionStore sessionStore;
+    private final JoinCharacterMenuPrompt joinPrompt;
 
     private EventRegistration<Void, PlayerConnectEvent> connectRegistration;
     private EventRegistration<Void, PlayerDisconnectEvent> disconnectRegistration;
 
-    public PlayerLifecycleModule(HytaleLogger logger, FabledPlayerManager playerManager) {
+    public PlayerLifecycleModule(HytaleLogger logger,
+                                 FabledPlayerManager playerManager,
+                                 SessionStore sessionStore,
+                                 JoinCharacterMenuPrompt joinPrompt) {
         this.logger = logger;
         this.playerManager = playerManager;
+        this.sessionStore = sessionStore;
+        this.joinPrompt = joinPrompt;
     }
 
     public void register(EventRegistry events) {
@@ -37,10 +47,19 @@ public final class PlayerLifecycleModule implements AutoCloseable {
         UUID playerId = event.getPlayerRef().getUuid();
         String displayName = resolveDisplayName(event.getPlayerRef());
         playerManager.loadPlayer(playerId, event.getPlayerRef(), displayName);
+
+        PlayerSession session = new PlayerSession(playerId, event.getPlayerRef());
+        session.setState(PlayerSession.State.CHARACTER_MENU);
+        sessionStore.put(session);
+
+        if (!joinPrompt.trySendPrompt(event.getPlayerRef())) {
+            logger.atInfo().log("Join prompt could not be pushed directly for %s. Use /chars.", playerId);
+        }
     }
 
     private void onPlayerDisconnect(PlayerDisconnectEvent event) {
         UUID playerId = event.getPlayerRef().getUuid();
+        sessionStore.remove(event.getPlayerRef());
         playerManager.unloadPlayer(playerId);
     }
 
@@ -73,5 +92,7 @@ public final class PlayerLifecycleModule implements AutoCloseable {
             }
         } catch (Exception ignored) {
         }
+
+        sessionStore.clear();
     }
 }

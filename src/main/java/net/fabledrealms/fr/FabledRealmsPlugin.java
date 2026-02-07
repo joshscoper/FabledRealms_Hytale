@@ -3,9 +3,16 @@ package net.fabledrealms.fr;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import net.fabledrealms.fr.admin.FabledAdminCommandService;
+import net.fabledrealms.fr.command.CharCreateCommand;
+import net.fabledrealms.fr.command.CharDeleteCommand;
+import net.fabledrealms.fr.command.CharSelectCommand;
+import net.fabledrealms.fr.command.CharsCommand;
 import net.fabledrealms.fr.command.FRAdminInspectCommand;
 import net.fabledrealms.fr.lifecycle.PlayerLifecycleModule;
 import net.fabledrealms.fr.player.FabledPlayerManager;
+import net.fabledrealms.fr.session.SessionStore;
+import net.fabledrealms.fr.ui.CharacterMenuRenderer;
+import net.fabledrealms.fr.ui.JoinCharacterMenuPrompt;
 
 import javax.annotation.Nonnull;
 import java.util.function.Consumer;
@@ -16,6 +23,9 @@ public final class FabledRealmsPlugin extends JavaPlugin {
     private FabledAdminCommandService adminCommandService;
     private PlayerLifecycleModule playerLifecycle;
 
+    private SessionStore sessionStore;
+    private CharacterMenuRenderer characterMenuRenderer;
+
     public FabledRealmsPlugin(@Nonnull JavaPluginInit init) {
         super(init);
     }
@@ -25,12 +35,24 @@ public final class FabledRealmsPlugin extends JavaPlugin {
         this.playerManager = new FabledPlayerManager(this);
         this.adminCommandService = new FabledAdminCommandService(playerManager);
 
-        this.playerLifecycle = new PlayerLifecycleModule(getLogger(), playerManager);
+        this.sessionStore = new SessionStore();
+        this.characterMenuRenderer = new CharacterMenuRenderer();
+
+        this.playerLifecycle = new PlayerLifecycleModule(
+                getLogger(),
+                playerManager,
+                sessionStore,
+                new JoinCharacterMenuPrompt()
+        );
         this.playerLifecycle.register(getEventRegistry());
 
+        getCommandRegistry().registerCommand(new CharsCommand(playerManager, characterMenuRenderer));
+        getCommandRegistry().registerCommand(new CharCreateCommand(playerManager));
+        getCommandRegistry().registerCommand(new CharSelectCommand(playerManager));
+        getCommandRegistry().registerCommand(new CharDeleteCommand(playerManager));
         getCommandRegistry().registerCommand(new FRAdminInspectCommand(this));
 
-        getLogger().atInfo().log("FabledRealms started with API-native player lifecycle and admin command wiring.");
+        getLogger().atInfo().log("FabledRealms started with MMORPG character foundation (create/select/delete + JSON persistence).");
     }
 
     @Override
@@ -56,5 +78,9 @@ public final class FabledRealmsPlugin extends JavaPlugin {
 
     public FabledAdminCommandService getAdminCommandService() {
         return adminCommandService;
+    }
+
+    public SessionStore getSessionStore() {
+        return sessionStore;
     }
 }
