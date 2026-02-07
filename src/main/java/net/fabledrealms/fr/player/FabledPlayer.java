@@ -18,7 +18,7 @@ public final class FabledPlayer {
     private final Player player;
 
     public FabledPlayer(Player player, PlayerEcsData ecsData) {
-        this(player.getPlayerRef().getPlayerUuid(), player.getPlayerRef(), ecsData, player);
+        this(player.getPlayerRef().getUuid(), player.getPlayerRef(), ecsData, player);
     }
 
     public FabledPlayer(UUID playerId, PlayerRef playerRef, PlayerEcsData ecsData) {

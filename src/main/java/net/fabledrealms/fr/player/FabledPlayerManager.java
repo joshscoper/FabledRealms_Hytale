@@ -30,7 +30,7 @@ public final class FabledPlayerManager {
     }
 
     public FabledPlayer loadPlayer(Player player) {
-        return loadPlayer(player.getPlayerRef().getPlayerUuid(), player.getPlayerRef(), player.getDisplayName());
+        return loadPlayer(player.getPlayerRef().getUuid(), player.getPlayerRef(), player.getDisplayName());
     }
 
     public FabledPlayer loadPlayer(UUID playerId, PlayerRef playerRef, String displayName) {
