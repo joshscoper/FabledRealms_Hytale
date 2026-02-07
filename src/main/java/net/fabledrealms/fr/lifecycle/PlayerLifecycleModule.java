@@ -32,13 +32,13 @@ public final class PlayerLifecycleModule implements AutoCloseable {
     }
 
     private void onPlayerConnect(PlayerConnectEvent event) {
-        UUID playerId = event.getPlayerRef().getUuid();
-        String displayName = event.getPlayerRef().getUuid().toString();
+        UUID playerId = event.getPlayerRef().getPlayerUuid();
+        String displayName = event.getPlayerRef().getPlayerUuid().toString();
         playerManager.loadPlayer(playerId, event.getPlayerRef(), displayName);
     }
 
     private void onPlayerDisconnect(PlayerDisconnectEvent event) {
-        UUID playerId = event.getPlayerRef().getUuid();
+        UUID playerId = event.getPlayerRef().getPlayerUuid();
         playerManager.unloadPlayer(playerId);
     }
 
