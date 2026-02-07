@@ -2,12 +2,19 @@ package net.fabledrealms.fr;
 
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
-
+import net.fabledrealms.fr.admin.FabledAdminCommandService;
+import net.fabledrealms.fr.command.FRAdminInspectCommand;
+import net.fabledrealms.fr.lifecycle.PlayerLifecycleModule;
+import net.fabledrealms.fr.player.FabledPlayerManager;
 
 import javax.annotation.Nonnull;
+import java.util.function.Consumer;
 
 public final class FabledRealmsPlugin extends JavaPlugin {
 
+    private FabledPlayerManager playerManager;
+    private FabledAdminCommandService adminCommandService;
+    private PlayerLifecycleModule playerLifecycle;
 
     public FabledRealmsPlugin(@Nonnull JavaPluginInit init) {
         super(init);
@@ -15,11 +22,39 @@ public final class FabledRealmsPlugin extends JavaPlugin {
 
     @Override
     public void start() {
+        this.playerManager = new FabledPlayerManager(this);
+        this.adminCommandService = new FabledAdminCommandService(playerManager);
 
+        this.playerLifecycle = new PlayerLifecycleModule(getLogger(), playerManager);
+        this.playerLifecycle.register(getEventRegistry());
+
+        getCommandRegistry().registerCommand(new FRAdminInspectCommand(this));
+
+        getLogger().atInfo().log("FabledRealms started with API-native player lifecycle and admin command wiring.");
     }
 
     @Override
     public void shutdown() {
+        if (playerLifecycle != null) {
+            playerLifecycle.close();
+        }
 
+        if (playerManager != null) {
+            playerManager.saveAll();
+        }
+
+        getLogger().atInfo().log("FabledRealms shutdown complete. Player data flushed to JSON.");
+    }
+
+    public void runAdminInspectCommand(String target, Consumer<String> reply) {
+        adminCommandService.inspectPlayerCharacters(target, reply);
+    }
+
+    public FabledPlayerManager getPlayerManager() {
+        return playerManager;
+    }
+
+    public FabledAdminCommandService getAdminCommandService() {
+        return adminCommandService;
     }
 }

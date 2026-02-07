@@ -1,70 +1,110 @@
 package net.fabledrealms.fr.player;
 
 import com.hypixel.hytale.server.core.entity.entities.Player;
+import com.hypixel.hytale.server.core.universe.PlayerRef;
 import net.fabledrealms.fr.FabledRealmsPlugin;
-import net.fabledrealms.fr.util.ResourceYamlUtil;
+import net.fabledrealms.fr.player.data.PlayerEcsData;
+import net.fabledrealms.fr.player.data.PlayerJsonStore;
 
 import java.io.File;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class FabledPlayerManager {
 
     private final FabledRealmsPlugin plugin;
-    private final Map<UUID, FabledPlayer> players = new ConcurrentHashMap<>();
+    private final PlayerJsonStore playerJsonStore;
+    private final Map<UUID, FabledPlayer> onlinePlayers = new ConcurrentHashMap<>();
 
     public FabledPlayerManager(FabledRealmsPlugin plugin) {
         this.plugin = plugin;
+
+        File playerDataDir = plugin.getDataDirectory()
+                .resolve("FabledRealms")
+                .resolve("player_data")
+                .toFile();
+
+        this.playerJsonStore = new PlayerJsonStore(playerDataDir);
     }
 
-    public void loadPlayer(Player player) {
-        File dataFile = getPlayerDataFile(player);
+    public FabledPlayer loadPlayer(Player player) {
+        return loadPlayer(player.getPlayerRef().getUuid(), player.getPlayerRef(), player.getDisplayName());
+    }
 
-        boolean existed = dataFile.exists();
-        boolean ok = ensurePlayerDataFile(dataFile);
+    public FabledPlayer loadPlayer(UUID playerId, PlayerRef playerRef, String displayName) {
+        PlayerEcsData data = playerJsonStore.loadOrCreate(playerId);
 
-        if (!ok) {
-            plugin.getLogger().atSevere().log("Failed to create player data file for %s (%s)",
-                    player.getDisplayName(), player.getUuid());
+        if (displayName != null && !displayName.isBlank() && !looksLikeUuid(displayName)) {
+            data.setLastKnownName(displayName);
+        }
+
+        FabledPlayer fabledPlayer = new FabledPlayer(playerId, playerRef, data);
+        onlinePlayers.put(playerId, fabledPlayer);
+
+        plugin.getLogger().atInfo().log(
+                "Loaded player %s (%s) with %s character(s).",
+                displayName,
+                playerId,
+                data.getCharacters().size()
+        );
+
+        return fabledPlayer;
+    }
+
+    private boolean looksLikeUuid(String value) {
+        try {
+            UUID.fromString(value);
+            return true;
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
+    }
+
+    public void savePlayer(UUID playerId) {
+        FabledPlayer fabledPlayer = onlinePlayers.get(playerId);
+        if (fabledPlayer == null) {
             return;
         }
 
-        if (!existed) {
-            plugin.getLogger().atInfo().log("Created data file for player %s (%s)",
-                    player.getDisplayName(), player.getUuid());
-        }
-
-        // Now load/store the player
-        FabledPlayer fp = new FabledPlayer(player, dataFile);
-        players.put(player.getUuid(), fp);
+        playerJsonStore.save(fabledPlayer.getEcsData());
     }
 
-    private File getPlayerDataFile(Player player) {
-        return new File(
-                plugin.getDataDirectory() + File.separator + "FabledRealms" + File.separator + "player_data",
-                player.getUuid().toString() + ".yml"
-        );
+    public void unloadPlayer(UUID playerId) {
+        FabledPlayer fabledPlayer = onlinePlayers.remove(playerId);
+        if (fabledPlayer == null) {
+            return;
+        }
+
+        playerJsonStore.save(fabledPlayer.getEcsData());
     }
 
-    private boolean ensurePlayerDataFile(File file) {
-        if (file.exists()) return true;
+    public void saveAll() {
+        onlinePlayers.values().forEach(fp -> playerJsonStore.save(fp.getEcsData()));
+    }
 
-        File parent = file.getParentFile();
-        if (parent != null && !parent.exists() && !parent.mkdirs()) {
-            return false;
+    public Optional<FabledPlayer> getPlayer(UUID playerId) {
+        return Optional.ofNullable(onlinePlayers.get(playerId));
+    }
+
+    public Optional<PlayerEcsData> getPlayerData(UUID playerId) {
+        FabledPlayer online = onlinePlayers.get(playerId);
+        if (online != null) {
+            return Optional.of(online.getEcsData());
+        }
+        return playerJsonStore.load(playerId);
+    }
+
+    public Optional<PlayerEcsData> getPlayerDataByName(String playerName) {
+        Optional<FabledPlayer> online = onlinePlayers.values().stream()
+                .filter(fp -> fp.getEcsData().getLastKnownName().equalsIgnoreCase(playerName))
+                .findFirst();
+
+        if (online.isPresent()) {
+            return Optional.of(online.get().getEcsData());
         }
 
-        try {
-            ResourceYamlUtil.createYamlFromTemplate(
-                    "templates/player_data_template.yml",
-                    file.toPath(),
-                    false
-            );
-            return true;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
+        return playerJsonStore.findByName(playerName);
     }
 }
