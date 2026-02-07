@@ -35,7 +35,10 @@ public final class FabledPlayerManager {
 
     public FabledPlayer loadPlayer(UUID playerId, PlayerRef playerRef, String displayName) {
         PlayerEcsData data = playerJsonStore.loadOrCreate(playerId);
-        data.setLastKnownName(displayName);
+
+        if (displayName != null && !displayName.isBlank() && !looksLikeUuid(displayName)) {
+            data.setLastKnownName(displayName);
+        }
 
         FabledPlayer fabledPlayer = new FabledPlayer(playerId, playerRef, data);
         onlinePlayers.put(playerId, fabledPlayer);
@@ -48,6 +51,15 @@ public final class FabledPlayerManager {
         );
 
         return fabledPlayer;
+    }
+
+    private boolean looksLikeUuid(String value) {
+        try {
+            UUID.fromString(value);
+            return true;
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
     }
 
     public void savePlayer(UUID playerId) {

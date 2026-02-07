@@ -1,5 +1,6 @@
 package net.fabledrealms.fr.player.data;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import net.fabledrealms.fr.player.data.model.CharacterProfile;
 
 import java.time.Instant;
@@ -30,6 +31,7 @@ public class PlayerEcsData {
         return data;
     }
 
+    @JsonIgnore
     public CharacterProfile getActiveCharacter() {
         if (activeCharacterId == null) {
             return null;
