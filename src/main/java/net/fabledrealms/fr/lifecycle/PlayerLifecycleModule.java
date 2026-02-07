@@ -3,6 +3,7 @@ package net.fabledrealms.fr.lifecycle;
 import com.hypixel.hytale.event.EventRegistration;
 import com.hypixel.hytale.event.EventRegistry;
 import com.hypixel.hytale.logger.HytaleLogger;
+import com.hypixel.hytale.server.core.entity.entities.Player;
 import com.hypixel.hytale.server.core.event.events.player.PlayerConnectEvent;
 import com.hypixel.hytale.server.core.event.events.player.PlayerDisconnectEvent;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
@@ -10,19 +11,18 @@ import net.fabledrealms.fr.player.FabledPlayerManager;
 import net.fabledrealms.fr.session.PlayerSession;
 import net.fabledrealms.fr.session.SessionStore;
 import net.fabledrealms.fr.ui.JoinCharacterMenuPrompt;
+import net.fabledrealms.fr.ui.CharacterUiService;
 
 import java.lang.reflect.Method;
 import java.util.UUID;
 
-/**
- * API-native player lifecycle registration wrapper.
- */
 public final class PlayerLifecycleModule implements AutoCloseable {
 
     private final HytaleLogger logger;
     private final FabledPlayerManager playerManager;
     private final SessionStore sessionStore;
     private final JoinCharacterMenuPrompt joinPrompt;
+    private final CharacterUiService characterUiService;
 
     private EventRegistration<Void, PlayerConnectEvent> connectRegistration;
     private EventRegistration<Void, PlayerDisconnectEvent> disconnectRegistration;
@@ -30,11 +30,13 @@ public final class PlayerLifecycleModule implements AutoCloseable {
     public PlayerLifecycleModule(HytaleLogger logger,
                                  FabledPlayerManager playerManager,
                                  SessionStore sessionStore,
-                                 JoinCharacterMenuPrompt joinPrompt) {
+                                 JoinCharacterMenuPrompt joinPrompt,
+                                 CharacterUiService characterUiService) {
         this.logger = logger;
         this.playerManager = playerManager;
         this.sessionStore = sessionStore;
         this.joinPrompt = joinPrompt;
+        this.characterUiService = characterUiService;
     }
 
     public void register(EventRegistry events) {
@@ -52,6 +54,16 @@ public final class PlayerLifecycleModule implements AutoCloseable {
         session.setState(PlayerSession.State.CHARACTER_MENU);
         sessionStore.put(session);
 
+        Player player = extractPlayer(event);
+        if (player != null) {
+            var roster = playerManager.getRoster(playerId);
+            if (characterUiService.openCharacterUi(player, playerManager.getPlayerData(playerId)
+                    .map(data -> data.getLastKnownName())
+                    .orElse("Unknown"), roster)) {
+                return;
+            }
+        }
+
         if (!joinPrompt.trySendPrompt(event.getPlayerRef())) {
             logger.atInfo().log("Join prompt could not be pushed directly for %s. Use /chars.", playerId);
         }
@@ -61,6 +73,18 @@ public final class PlayerLifecycleModule implements AutoCloseable {
         UUID playerId = event.getPlayerRef().getUuid();
         sessionStore.remove(event.getPlayerRef());
         playerManager.unloadPlayer(playerId);
+    }
+
+    private Player extractPlayer(PlayerConnectEvent event) {
+        try {
+            Method method = event.getClass().getMethod("getPlayer");
+            Object value = method.invoke(event);
+            if (value instanceof Player p) {
+                return p;
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 
     private String resolveDisplayName(PlayerRef playerRef) {

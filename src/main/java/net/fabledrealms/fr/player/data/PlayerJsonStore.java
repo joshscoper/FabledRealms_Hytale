@@ -12,6 +12,7 @@ import net.fabledrealms.fr.player.data.model.CharacterProfile;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -20,9 +21,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Lightweight JSON persistence for player ECS data.
- */
 public final class PlayerJsonStore {
 
     private final File playerDataDir;
@@ -37,11 +35,14 @@ public final class PlayerJsonStore {
     }
 
     public PlayerEcsData loadOrCreate(UUID playerId) {
-        return load(playerId).orElseGet(() -> {
-            PlayerEcsData created = PlayerEcsData.createDefault(playerId);
-            save(created);
-            return created;
-        });
+        Optional<PlayerEcsData> loaded = load(playerId);
+        if (loaded.isPresent()) {
+            return loaded.get();
+        }
+
+        PlayerEcsData created = normalize(PlayerEcsData.createDefault(playerId), playerId);
+        save(created);
+        return created;
     }
 
     public Optional<PlayerEcsData> load(UUID playerId) {
@@ -63,12 +64,15 @@ public final class PlayerJsonStore {
             throw new IllegalArgumentException("Player ID is required before saving.");
         }
 
-        data.setUpdatedAt(Instant.now());
+        PlayerEcsData normalized = normalize(data, data.getPlayerId());
+        normalized.setUpdatedAt(Instant.now());
 
-        File file = resolveFile(data.getPlayerId());
+        File file = resolveFile(normalized.getPlayerId());
+        File tmpFile = new File(file.getParentFile(), file.getName() + ".tmp");
         try {
             Files.createDirectories(playerDataDir.toPath());
-            mapper.writeValue(file, data);
+            mapper.writeValue(tmpFile, normalized);
+            Files.move(tmpFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to write player JSON: " + file.getAbsolutePath(), e);
         }
@@ -99,7 +103,6 @@ public final class PlayerJsonStore {
                     results.add(normalize(data, data.getPlayerId()));
                 }
             } catch (IOException ignored) {
-                // skip malformed files but keep the admin command functional for valid entries
             }
         }
 
@@ -107,17 +110,9 @@ public final class PlayerJsonStore {
     }
 
     private PlayerEcsData normalize(PlayerEcsData data, UUID fallbackPlayerId) {
-        if (data.getPlayerId() == null) {
-            data.setPlayerId(fallbackPlayerId);
-        }
-
-        if (data.getLastKnownName() == null || data.getLastKnownName().isBlank()) {
-            data.setLastKnownName("Unknown");
-        }
-
-        if (data.getCharacters() == null) {
-            data.setCharacters(new LinkedHashMap<>());
-        }
+        if (data.getPlayerId() == null) data.setPlayerId(fallbackPlayerId);
+        if (data.getLastKnownName() == null || data.getLastKnownName().isBlank()) data.setLastKnownName("Unknown");
+        if (data.getCharacters() == null) data.setCharacters(new LinkedHashMap<>());
 
         if (data.getCharacters().isEmpty()) {
             CharacterProfile profile = CharacterProfile.createDefault();
@@ -128,21 +123,13 @@ public final class PlayerJsonStore {
         Map<UUID, CharacterProfile> fixed = new LinkedHashMap<>();
         for (Map.Entry<UUID, CharacterProfile> entry : data.getCharacters().entrySet()) {
             UUID id = entry.getKey();
-            CharacterProfile profile = entry.getValue();
-            if (profile == null) {
-                profile = CharacterProfile.createDefault();
-            }
-            if (profile.getCharacterId() == null) {
-                profile.setCharacterId(id != null ? id : UUID.randomUUID());
-            }
-            if (profile.getCharacterName() == null || profile.getCharacterName().isBlank()) {
-                profile.setCharacterName("Adventurer");
-            }
+            CharacterProfile profile = entry.getValue() != null ? entry.getValue() : CharacterProfile.createDefault();
+            if (profile.getCharacterId() == null) profile.setCharacterId(id != null ? id : UUID.randomUUID());
+            if (profile.getCharacterName() == null || profile.getCharacterName().isBlank()) profile.setCharacterName("Adventurer");
             if (profile.getStats() == null) profile.setStats(new PlayerStatsComponent());
             if (profile.getEconomy() == null) profile.setEconomy(new EconomyComponent());
             if (profile.getSocial() == null) profile.setSocial(new SocialComponent());
             if (profile.getProfessions() == null) profile.setProfessions(new ProfessionsComponent());
-
             fixed.put(profile.getCharacterId(), profile);
         }
         data.setCharacters(fixed);
@@ -150,7 +137,6 @@ public final class PlayerJsonStore {
         if (data.getActiveCharacterId() == null || !data.getCharacters().containsKey(data.getActiveCharacterId())) {
             data.setActiveCharacterId(data.getCharacters().keySet().iterator().next());
         }
-
         return data;
     }
 

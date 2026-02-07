@@ -6,6 +6,7 @@ import com.hypixel.hytale.server.core.command.system.CommandContext;
 import com.hypixel.hytale.server.core.entity.entities.Player;
 import net.fabledrealms.fr.player.FabledPlayerManager;
 import net.fabledrealms.fr.ui.CharacterMenuRenderer;
+import net.fabledrealms.fr.ui.CharacterUiService;
 
 import javax.annotation.Nonnull;
 import java.util.concurrent.CompletableFuture;
@@ -14,11 +15,15 @@ public final class CharsCommand extends AbstractCommand {
 
     private final FabledPlayerManager playerManager;
     private final CharacterMenuRenderer renderer;
+    private final CharacterUiService uiService;
 
-    public CharsCommand(FabledPlayerManager playerManager, CharacterMenuRenderer renderer) {
+    public CharsCommand(FabledPlayerManager playerManager,
+                        CharacterMenuRenderer renderer,
+                        CharacterUiService uiService) {
         super("chars", "Open character selection UI");
         this.playerManager = playerManager;
         this.renderer = renderer;
+        this.uiService = uiService;
     }
 
     @Override
@@ -34,7 +39,11 @@ public final class CharsCommand extends AbstractCommand {
                 .map(data -> data.getLastKnownName())
                 .orElse(player.getDisplayName());
 
-        renderer.renderToCommand(ctx, name, roster);
+        boolean opened = uiService.openCharacterUi(player, name, roster);
+        if (!opened) {
+            renderer.renderToCommand(ctx, name, roster);
+        }
+
         return CompletableFuture.completedFuture(null);
     }
 }

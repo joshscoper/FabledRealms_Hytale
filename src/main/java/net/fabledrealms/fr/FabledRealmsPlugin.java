@@ -12,6 +12,8 @@ import net.fabledrealms.fr.lifecycle.PlayerLifecycleModule;
 import net.fabledrealms.fr.player.FabledPlayerManager;
 import net.fabledrealms.fr.session.SessionStore;
 import net.fabledrealms.fr.ui.CharacterMenuRenderer;
+import net.fabledrealms.fr.ui.CharacterUiService;
+import net.fabledrealms.fr.ui.HytaleCharacterUiService;
 import net.fabledrealms.fr.ui.JoinCharacterMenuPrompt;
 
 import javax.annotation.Nonnull;
@@ -25,6 +27,7 @@ public final class FabledRealmsPlugin extends JavaPlugin {
 
     private SessionStore sessionStore;
     private CharacterMenuRenderer characterMenuRenderer;
+    private CharacterUiService characterUiService;
 
     public FabledRealmsPlugin(@Nonnull JavaPluginInit init) {
         super(init);
@@ -37,22 +40,25 @@ public final class FabledRealmsPlugin extends JavaPlugin {
 
         this.sessionStore = new SessionStore();
         this.characterMenuRenderer = new CharacterMenuRenderer();
+        this.characterUiService = new HytaleCharacterUiService();
 
         this.playerLifecycle = new PlayerLifecycleModule(
                 getLogger(),
                 playerManager,
                 sessionStore,
-                new JoinCharacterMenuPrompt()
+                new JoinCharacterMenuPrompt(),
+                characterUiService
         );
         this.playerLifecycle.register(getEventRegistry());
 
-        getCommandRegistry().registerCommand(new CharsCommand(playerManager, characterMenuRenderer));
+        getCommandRegistry().registerCommand(new CharsCommand(playerManager, characterMenuRenderer, characterUiService));
         getCommandRegistry().registerCommand(new CharCreateCommand(playerManager));
         getCommandRegistry().registerCommand(new CharSelectCommand(playerManager));
         getCommandRegistry().registerCommand(new CharDeleteCommand(playerManager));
         getCommandRegistry().registerCommand(new FRAdminInspectCommand(this));
 
-        getLogger().atInfo().log("FabledRealms started with MMORPG character foundation (create/select/delete + JSON persistence).");
+        getLogger().atInfo().log("FabledRealms started with MMORPG character foundation (create/select/delete + JSON persistence).\n"
+                + "UI path: native Hytale UI hooks first, chat fallback second.");
     }
 
     @Override
